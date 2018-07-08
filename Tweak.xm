@@ -13,12 +13,27 @@
 @interface WALockscreenWidgetViewController : UIViewController
 @end
 
+@interface SpringBoard : UIApplication
+- (long long)activeInterfaceOrientation;
+@end
+
+@interface SBLockScreenDateViewController : UIViewController
+@property (nonatomic, retain) UIViewController *weatherController;
+@end
+
+#define getActiveInterfaceOrientation ([(SpringBoard*)[UIApplication sharedApplication] activeInterfaceOrientation])
+#define isLandscape (getActiveInterfaceOrientation >= 3)
+
 static BOOL IS_RTL = NO;
 static BOOL RTL_IS_SET = NO;
 
 %hook SBFLockScreenDateView
 %property (nonatomic, retain) UIView *weatherView;
 - (CGFloat)alignmentPercent {
+	if (isLandscape) {
+		return %orig;
+	}
+
 	if (!RTL_IS_SET) {
 		IS_RTL = [UIApplication sharedApplication].userInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 		RTL_IS_SET = YES;
@@ -26,6 +41,11 @@ static BOOL RTL_IS_SET = NO;
 	return IS_RTL ? -1.0 : 1.0;
 }
 - (void)setAlignmentPercent:(CGFloat)percent {
+	if (isLandscape) {
+		%orig;
+		return;
+	}
+
 	if (!RTL_IS_SET) {
 		IS_RTL = [UIApplication sharedApplication].userInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 		RTL_IS_SET = YES;
@@ -33,11 +53,6 @@ static BOOL RTL_IS_SET = NO;
 	%orig(IS_RTL ? -1.0 : 1.0);
 }
 %end
-
-@interface SBLockScreenDateViewController : UIViewController
-@property (nonatomic, retain) UIViewController *weatherController;
-@end
-
 
 %hook SBLockScreenDateViewController
 %property (nonatomic, retain) UIViewController *weatherController;
@@ -47,6 +62,7 @@ static BOOL RTL_IS_SET = NO;
 		IS_RTL = [UIApplication sharedApplication].userInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 		RTL_IS_SET = YES;
 	}
+	
 	self.weatherController = [[NSClassFromString(@"WALockscreenWidgetViewController") alloc] init];
 	[self addChildViewController:self.weatherController];
 	[self.weatherController didMoveToParentViewController:self];
@@ -69,10 +85,19 @@ static BOOL RTL_IS_SET = NO;
 			                                              constant:0]];
 }
 
+- (void)_updateView {
+	%orig;
+
+	if (isLandscape) {
+		self.weatherController.view.alpha = 0;
+	}
+}
+
 - (void)setContentAlpha:(CGFloat)alpha withSubtitleVisible:(BOOL)subtitleVisible {
 	%orig;
-	if (self.weatherController)
+	if (self.weatherController && !isLandscape) {
 		self.weatherController.view.alpha = alpha;
+	}
 }
 %end
 

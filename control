@@ -1,4 +1,4 @@
-Package: com.ioscreatix.twig
+Package: pw.ssnull.twig
 Name: Twig
 Depends: mobilesubstrate
 Version: 1.0.1
